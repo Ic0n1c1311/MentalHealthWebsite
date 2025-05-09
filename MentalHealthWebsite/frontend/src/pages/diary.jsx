@@ -1,7 +1,6 @@
 import React, { useState } from "react";
 
 const Diary = () => {
-  // Initialize an array of 15 empty strings for diary entries
   const initialEntries = Array(15).fill("");
   const [entries, setEntries] = useState(initialEntries);
   const [result, setResult] = useState("");
@@ -15,12 +14,10 @@ const Diary = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    console.log("Submitting diary entries..."); // Debug log
     setIsProcessing(true);
     setResult("");
 
     try {
-      // Use the full URL of the Flask backend
       const response = await fetch("http://127.0.0.1:5000/predict", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -31,17 +28,42 @@ const Diary = () => {
       if (data.error) {
         setResult("Error: " + data.error);
       } else {
-        setResult("Your Depression Level: " + data.prediction);
+        let resultHTML = `
+          <div class="text-xl font-semibold mb-4">
+            Depression Level: ${data.prediction} (Score: ${data.phq9_equivalent_score})
+          </div>
+          <div class="text-left mt-4">
+            <h2 class="text-lg font-medium mb-2 text-blue-700">Detected Symptoms:</h2>
+            <ul class="list-disc list-inside space-y-1">
+        `;
+
+        // Render detected symptoms with occurrence details
+        data.symptom_occurrences_detail.forEach((symptom) => {
+          resultHTML += `
+            <li>
+              <strong>${symptom.symptom}:</strong> 
+              ${
+                symptom.total_occurrences
+              } occurrence(s) on days ${symptom.days_detected.join(", ")}
+            </li>
+          `;
+        });
+
+        resultHTML += "</ul></div>";
+
+        setResult(resultHTML);
       }
     } catch (error) {
       console.error("Error:", error);
       setResult("An error occurred. Please try again.");
     }
+
     setIsProcessing(false);
   };
 
   const handleReset = () => {
     setEntries(initialEntries);
+    setResult("");
   };
 
   return (
@@ -98,9 +120,13 @@ const Diary = () => {
           </button>
         </div>
       </form>
-      <div id="result" className="mt-6 text-center text-xl text-gray-800">
-        {result}
-      </div>
+
+      {/* Result Output Section */}
+      <div
+        id="result"
+        className="mt-6 text-center text-xl text-gray-800"
+        dangerouslySetInnerHTML={{ __html: result }}
+      ></div>
     </div>
   );
 };
